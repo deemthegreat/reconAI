@@ -1,6 +1,5 @@
-streamlit
-crewai== 0.28.8
-crewai_tools == 0.1.7
-langchain_huggingface
+streamlit>=1.38.0
+crewai==0.28.8
+crewai_tools==0.1.7
+langchain-huggingface
 duckduckgo-search
-
