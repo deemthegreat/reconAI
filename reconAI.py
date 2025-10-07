@@ -2,7 +2,7 @@ import os
 import streamlit as st
 from crewai import Agent, Task, Crew, Process
 from langchain_huggingface import HuggingFaceEndpoint
-from duckduckgo_search import ddg_answers  # Cloud-friendly
+from duckduckgo_search import DDGS  # <- use DDGS class, works with the latest package
 
 # --- SETUP THE HUGGING FACE LLM ---
 os.environ["HUGGINGFACE_API_KEY"] = "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"
@@ -13,23 +13,22 @@ llm = HuggingFaceEndpoint(
     max_new_tokens=512
 )
 
-# --- DEFINE CLOUD-FRIENDLY SEARCH TOOL ---
+# --- CLOUD-FRIENDLY DUCKDUCKGO TOOL ---
 class DuckDuckGoSearchTool:
     def search(self, query):
-        results = ddg_answers(query, max_results=5)
-        return "\n".join([r["body"] for r in results if "body" in r])
+        results = []
+        with DDGS() as ddgs:
+            for r in ddgs.text(query, region='wt-wt', safesearch='Off', timelimit='y', max_results=5):
+                results.append(r['body'])
+        return "\n".join(results)
 
 search_tool = DuckDuckGoSearchTool()
 
 # --- AGENTS ---
 recon_agent = Agent(
     role='Digital Reconnaissance Specialist',
-    goal='To search the public internet for mentions, social media, and online activities of {topic}.',
-    backstory=(
-        "You are an expert in OSINT. "
-        "Your mission is to find public data about a person, "
-        "focusing on social media, forums, and public websites."
-    ),
+    goal='Search the public internet for mentions, social media, and online activities of {topic}.',
+    backstory="You are an OSINT expert tasked with gathering public information about a person.",
     verbose=True,
     allow_delegation=False,
     tools=[search_tool],
@@ -37,9 +36,9 @@ recon_agent = Agent(
 )
 
 analyst_agent = Agent(
-    role='Data Clustering and Profiling Analyst',
-    goal='Analyze raw data from reconnaissance and cluster it into logical groups like "Professional," "Personal," or "Hobbies."',
-    backstory="You are a skilled data analyst. Your job is to take messy data and create a structured profile.",
+    role='Data Clustering Analyst',
+    goal='Cluster raw data from reconnaissance into logical groups and create structured report.',
+    backstory="You are a skilled analyst. Take messy data and create a clean profile.",
     verbose=True,
     allow_delegation=False,
     llm=llm
@@ -47,11 +46,8 @@ analyst_agent = Agent(
 
 security_agent = Agent(
     role='Digital Security Risk Assessor',
-    goal='Assess clustered data and assign a digital security risk score from 1 to 10, with mitigation steps.',
-    backstory=(
-        "You are a cybersecurity expert. "
-        "Provide a risk score, justification, and 3 actionable recommendations."
-    ),
+    goal='Assess clustered data, give a risk score (1-10) and 3 actionable recommendations.',
+    backstory="You are a cybersecurity expert. Evaluate risks and suggest improvements.",
     verbose=True,
     allow_delegation=False,
     llm=llm
@@ -59,13 +55,13 @@ security_agent = Agent(
 
 # --- TASKS ---
 recon_task = Task(
-    description='Conduct digital reconnaissance for {topic}, gathering all public data.',
-    expected_output='Raw list of data points, links, and snippets.',
+    description='Conduct digital reconnaissance for {topic}.',
+    expected_output='Raw list of data points and links.',
     agent=recon_agent
 )
 
 analysis_task = Task(
-    description='Cluster raw data into logical groups and create a structured report.',
+    description='Cluster raw data and create structured report.',
     expected_output='Structured markdown report with clusters.',
     agent=analyst_agent
 )
