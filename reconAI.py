@@ -1,10 +1,10 @@
 import os
 import streamlit as st
+from pydantic import BaseModel
 from crewai import Agent, Task, Crew, Process
 from langchain_huggingface import HuggingFaceEndpoint
-from duckduckgo_search import DDGS  # <- use DDGS class, works with the latest package
 
-# --- SETUP THE HUGGING FACE LLM ---
+# --- SETUP THE LOCAL LLM ---
 os.environ["HUGGINGFACE_API_KEY"] = "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"
 
 llm = HuggingFaceEndpoint(
@@ -13,18 +13,24 @@ llm = HuggingFaceEndpoint(
     max_new_tokens=512
 )
 
-# --- CLOUD-FRIENDLY DUCKDUCKGO TOOL ---
-class DuckDuckGoSearchTool:
-    def search(self, query):
+# --- DEFINE A DUCKDUCKGO SEARCH TOOL ---
+class DuckDuckGoSearchTool(BaseModel):
+    name: str = "DuckDuckGoSearch"
+
+    def run(self, query: str) -> str:
+        from duckduckgo_search import DDGS
         results = []
-        with DDGS() as ddgs:
-            for r in ddgs.text(query, region='wt-wt', safesearch='Off', timelimit='y', max_results=5):
-                results.append(r['body'])
+        try:
+            with DDGS() as ddgs:
+                for r in ddgs.text(query, region='wt-wt', safesearch='Off', timelimit='y', max_results=5):
+                    results.append(r['body'])
+        except Exception as e:
+            results.append(f"Error during search: {e}")
         return "\n".join(results)
 
 search_tool = DuckDuckGoSearchTool()
 
-# --- AGENTS ---
+# --- AGENT DEFINITIONS ---
 recon_agent = Agent(
     role='Digital Reconnaissance Specialist',
     goal='Search the public internet for mentions, social media, and online activities of {topic}.',
@@ -36,9 +42,9 @@ recon_agent = Agent(
 )
 
 analyst_agent = Agent(
-    role='Data Clustering Analyst',
-    goal='Cluster raw data from reconnaissance into logical groups and create structured report.',
-    backstory="You are a skilled analyst. Take messy data and create a clean profile.",
+    role='Data Clustering and Profiling Analyst',
+    goal='Analyze raw data and group into clusters like "Professional," "Personal," "Hobbies."',
+    backstory="You are a skilled data analyst. Organize messy data into a clean structured profile.",
     verbose=True,
     allow_delegation=False,
     llm=llm
@@ -46,33 +52,33 @@ analyst_agent = Agent(
 
 security_agent = Agent(
     role='Digital Security Risk Assessor',
-    goal='Assess clustered data, give a risk score (1-10) and 3 actionable recommendations.',
-    backstory="You are a cybersecurity expert. Evaluate risks and suggest improvements.",
+    goal='Assess digital footprint and assign a security risk score from 1 (safe) to 10 (high risk). Provide actionable advice.',
+    backstory="You are a cybersecurity expert. Provide risk score and actionable recommendations.",
     verbose=True,
     allow_delegation=False,
     llm=llm
 )
 
-# --- TASKS ---
+# --- TASK DEFINITIONS ---
 recon_task = Task(
-    description='Conduct digital reconnaissance for {topic}.',
-    expected_output='Raw list of data points and links.',
+    description='Conduct thorough digital reconnaissance on the provided {topic}. Gather public info, links, social profiles, etc.',
+    expected_output='Raw unorganized list of all data points, links, and snippets.',
     agent=recon_agent
 )
 
 analysis_task = Task(
-    description='Cluster raw data and create structured report.',
-    expected_output='Structured markdown report with clusters.',
+    description='Analyze raw data and cluster into logical groups with a structured markdown report.',
+    expected_output='Structured markdown report with clear headings and listed data points.',
     agent=analyst_agent
 )
 
 security_task = Task(
-    description='Perform security assessment on clustered data.',
-    expected_output='Risk score, explanation, and 3 security recommendations.',
+    description='Conduct security risk assessment based on clustered report. Assign score and recommendations.',
+    expected_output='Final report with risk score, justification paragraph, and 3 actionable steps.',
     agent=security_agent
 )
 
-# --- CREW ---
+# --- CREW DEFINITION ---
 digital_footprint_crew = Crew(
     agents=[recon_agent, analyst_agent, security_agent],
     tasks=[recon_task, analysis_task, security_task],
@@ -80,24 +86,28 @@ digital_footprint_crew = Crew(
     verbose=2
 )
 
-# --- STREAMLIT UI ---
+# --- STREAMLIT USER INTERFACE ---
 st.set_page_config(page_title="AI Digital Footprint Agent", layout="wide")
 st.title("🤖 AI Digital Footprint & Risk Score Agent")
-st.markdown("Analyze a person's digital footprint safely using AI agents.")
+st.markdown("This tool uses a team of AI agents to analyze your public digital footprint, running locally.")
 
 st.sidebar.header("About")
-st.sidebar.info("Uses CrewAI framework and Hugging Face API for AI models. Runs fully in the cloud.")
+st.sidebar.info("Uses CrewAI + HuggingFace local model (Mistral 7B) to perform tasks while keeping your data private.")
 
-topic_input = st.text_input("Enter a name, username, or email:", placeholder="e.g., 'John Doe'")
+st.header("Enter a Target for Reconnaissance")
+topic_input = st.text_input("Enter a name, username, or email address to investigate:", placeholder="e.g., 'John Doe', 'johndoe123', or 'john.doe@email.com'")
 
-if st.button("🕵️‍♂️ Start Analysis"):
+if st.button("🕵️‍♂️ Start Analysis", type="primary"):
     if topic_input:
-        with st.spinner("Assembling AI crew and performing investigation..."):
-            st.info("Phase 1: Reconnaissance...")
-            result = digital_footprint_crew.kickoff(inputs={'topic': topic_input})
-            st.success("Analysis Complete!")
-            st.markdown("---")
-            st.header("Final Digital Footprint Report")
-            st.markdown(result)
+        with st.spinner("AI crew is starting the investigation... This may take a few minutes."):
+            st.info("**Phase 1: Reconnaissance** - The first agent is searching the web...")
+            try:
+                result = digital_footprint_crew.kickoff(inputs={'topic': topic_input})
+                st.success("Analysis Complete!")
+                st.markdown("---")
+                st.header("Final Digital Footprint Report")
+                st.markdown(result)
+            except Exception as e:
+                st.error(f"Error during analysis: {e}")
     else:
         st.error("Please enter a target to investigate.")
