@@ -17,7 +17,7 @@ llm = HuggingFaceEndpoint(
 
 # --- AGENT DEFINITIONS ---
 # Tool for searching the web
-search_tool = DuckDuckGoSearchRun()
+search_tool = DuckDuckGoSearchTool()
 
 # Agent 1: The Reconnaissance Specialist
 recon_agent = Agent(
@@ -118,6 +118,7 @@ if st.button("🕵️‍♂️ Start Analysis", type="primary"):
     else:
 
         st.error("Please enter a target to investigate.")
+
 
 
 
