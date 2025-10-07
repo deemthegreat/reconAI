@@ -2,18 +2,15 @@ import os
 import streamlit as st
 from crewai import Agent, Task, Crew, Process
 from langchain_huggingface import HuggingFaceEndpoint
+from duckduckgo_search import ddg_answers  # reliable function from duckduckgo-search
 
 # --- DEFINE A DUCKDUCKGO SEARCH TOOL ---
-from crewai_tools import Tool
-from duckduckgo_search import DuckDuckGoSearch  # updated import
-
-class DuckDuckGoSearchTool(Tool):
+class DuckDuckGoSearchTool:
     def run(self, query):
-        search = DuckDuckGoSearch()
-        results = search.search(query, max_results=5)
+        results = ddg_answers(query, related=True)
         if not results:
             return "No results found."
-        return "\n".join([f"{r['title']}: {r['href']}" for r in results])
+        return "\n".join([f"{r}" for r in results[:5]])
 
 # Instantiate the search tool
 search_tool = DuckDuckGoSearchTool()
@@ -102,7 +99,7 @@ st.title("🤖 AI Digital Footprint & Risk Score Agent")
 st.markdown("This tool uses a team of AI agents to find and analyze your public digital footprint for **free**, running entirely on your local machine.")
 
 st.sidebar.header("About")
-st.sidebar.info("This app uses the CrewAI framework and a local Ollama model (Mistral 7B) to perform its tasks. This ensures your data stays private and the service remains free.")
+st.sidebar.info("This app uses the CrewAI framework and a local Hugging Face model (Mistral 7B) to perform its tasks. Your data stays private and the service remains free.")
 
 st.header("Enter a Target for Reconnaissance")
 topic_input = st.text_input("Enter a name, username, or email address to investigate:", placeholder="e.g., 'John Doe', 'johndoe123', or 'john.doe@email.com'")
