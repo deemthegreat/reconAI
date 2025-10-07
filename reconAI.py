@@ -2,24 +2,31 @@ import os
 import streamlit as st
 from crewai import Agent, Task, Crew, Process
 from langchain_huggingface import HuggingFaceEndpoint
-search_tool = SearchTool(search_engine="duckduckgo")  # default engine
+from duckduckgo_search import ddg  # Use this package directly
+
+# --- DEFINE A DUCKDUCKGO SEARCH TOOL ---
+from crewai_tools import Tool
+
+class DuckDuckGoSearchTool(Tool):
+    def run(self, query):
+        results = ddg(query, max_results=5)
+        if not results:
+            return "No results found."
+        return "\n".join([f"{r['title']}: {r['href']}" for r in results])
+
+# Instantiate the search tool
+search_tool = DuckDuckGoSearchTool()
 
 # --- SETUP THE LOCAL LLM ---
-# Initialize the Ollama model for all agents
 os.environ["HUGGINGFACE_API_KEY"] = "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"
 
-# Use a free model from Hugging Face
 llm = HuggingFaceEndpoint(
-    repo_id="mistralai/Mistral-7B-Instruct-v0.2", 
+    repo_id="mistralai/Mistral-7B-Instruct-v0.2",
     task="text-generation",
     max_new_tokens=512
 )
 
 # --- AGENT DEFINITIONS ---
-# Tool for searching the web
-search_tool = DuckDuckGoSearchTool()
-
-# Agent 1: The Reconnaissance Specialist
 recon_agent = Agent(
     role='Digital Reconnaissance Specialist',
     goal='To search the public internet for any mentions, social media profiles, and online activities related to a given {topic}.',
@@ -34,7 +41,6 @@ recon_agent = Agent(
     llm=llm
 )
 
-# Agent 2: The Data Analyst (Our Unique Twist!)
 analyst_agent = Agent(
     role='Data Clustering and Profiling Analyst',
     goal='To analyze the raw data from the reconnaissance agent and group it into logical clusters like "Professional," "Personal," or "Hobbies."',
@@ -48,7 +54,6 @@ analyst_agent = Agent(
     llm=llm
 )
 
-# Agent 3: The Security Risk Scorer
 security_agent = Agent(
     role='Digital Security Risk Assessor',
     goal='To assess the clustered digital footprint and assign a security risk score from 1 (very safe) to 10 (high risk). Provide actionable advice to mitigate risks.',
@@ -64,7 +69,6 @@ security_agent = Agent(
 )
 
 # --- TASK DEFINITIONS ---
-# Define the tasks for the agents
 recon_task = Task(
     description='Conduct a thorough digital reconnaissance on the provided {topic}. Gather all public information, links, social media profiles, and any other relevant data.',
     expected_output='A raw, unorganized list of all data points, links, and text snippets found.',
@@ -84,7 +88,6 @@ security_task = Task(
 )
 
 # --- CREW DEFINITION ---
-# Form the crew with the agents and their tasks
 digital_footprint_crew = Crew(
     agents=[recon_agent, analyst_agent, security_agent],
     tasks=[recon_task, analysis_task, security_task],
@@ -116,15 +119,4 @@ if st.button("🕵️‍♂️ Start Analysis", type="primary"):
             st.header("Final Digital Footprint Report")
             st.markdown(result)
     else:
-
         st.error("Please enter a target to investigate.")
-
-
-
-
-
-
-
-
-
-
