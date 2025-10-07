@@ -1,12 +1,19 @@
 import os
 import streamlit as st
 from crewai import Agent, Task, Crew, Process
-from langchain_community.llms import Ollama
+from langchain_huggingface import HuggingFaceEndpoint
 from crewai_tools import DuckDuckGoSearchRun
 
 # --- SETUP THE LOCAL LLM ---
 # Initialize the Ollama model for all agents
-ollama_llm = Ollama(model="mistral")
+os.environ["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"] = "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"
+
+# Use a free model from Hugging Face
+llm = HuggingFaceEndpoint(
+    repo_id="mistralai/Mistral-7B-Instruct-v0.2", 
+    task="text-generation",
+    max_new_tokens=512
+)
 
 # --- AGENT DEFINITIONS ---
 # Tool for searching the web
@@ -24,7 +31,7 @@ recon_agent = Agent(
     verbose=True,
     allow_delegation=False,
     tools=[search_tool],
-    llm=ollama_llm
+    llm=llm
 )
 
 # Agent 2: The Data Analyst (Our Unique Twist!)
@@ -38,7 +45,7 @@ analyst_agent = Agent(
     ),
     verbose=True,
     allow_delegation=False,
-    llm=ollama_llm
+    llm=llm
 )
 
 # Agent 3: The Security Risk Scorer
@@ -53,7 +60,7 @@ security_agent = Agent(
     ),
     verbose=True,
     allow_delegation=False,
-    llm=ollama_llm
+    llm=llm
 )
 
 # --- TASK DEFINITIONS ---
@@ -109,4 +116,5 @@ if st.button("🕵️‍♂️ Start Analysis", type="primary"):
             st.header("Final Digital Footprint Report")
             st.markdown(result)
     else:
+
         st.error("Please enter a target to investigate.")
