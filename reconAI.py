@@ -2,14 +2,15 @@ import os
 import streamlit as st
 from crewai import Agent, Task, Crew, Process
 from langchain_huggingface import HuggingFaceEndpoint
-from duckduckgo_search import ddg  # Use this package directly
 
 # --- DEFINE A DUCKDUCKGO SEARCH TOOL ---
 from crewai_tools import Tool
+from duckduckgo_search import DuckDuckGoSearch  # updated import
 
 class DuckDuckGoSearchTool(Tool):
     def run(self, query):
-        results = ddg(query, max_results=5)
+        search = DuckDuckGoSearch()
+        results = search.search(query, max_results=5)
         if not results:
             return "No results found."
         return "\n".join([f"{r['title']}: {r['href']}" for r in results])
@@ -110,10 +111,10 @@ if st.button("🕵️‍♂️ Start Analysis", type="primary"):
     if topic_input:
         with st.spinner("The AI crew is assembling and beginning the investigation... This may take a few minutes."):
             st.info("**Phase 1: Reconnaissance** - The first agent is searching the web...")
-            
+
             # Kick off the crew's work
             result = digital_footprint_crew.kickoff(inputs={'topic': topic_input})
-            
+
             st.success("Analysis Complete!")
             st.markdown("---")
             st.header("Final Digital Footprint Report")
