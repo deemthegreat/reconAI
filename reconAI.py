@@ -2,7 +2,7 @@ import os
 import streamlit as st
 from crewai import Agent, Task, Crew, Process
 from langchain_huggingface import HuggingFaceEndpoint
-from crewai.tools import DuckDuckGoSearchRun
+from crewai_tools import DuckDuckGoSearchRun
 
 # --- SETUP THE LOCAL LLM ---
 # Initialize the Ollama model for all agents
@@ -118,6 +118,7 @@ if st.button("🕵️‍♂️ Start Analysis", type="primary"):
     else:
 
         st.error("Please enter a target to investigate.")
+
 
 
 
