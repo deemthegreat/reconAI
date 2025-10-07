@@ -3,3 +3,4 @@ crewai
 crewai-tools
 langchain-community
 duckduckgo-search
+langchain-huggingface
