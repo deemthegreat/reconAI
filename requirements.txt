@@ -1,5 +1,5 @@
 streamlit>=1.38.0
-crewai==0.28.8
-crewai_tools==0.1.7
+crewai-tools>=0.1.7
+crewai>=0.201.1
 langchain-huggingface
 duckduckgo-search
