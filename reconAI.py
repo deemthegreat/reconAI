@@ -6,7 +6,7 @@ from crewai_tools import DuckDuckGoSearchTool
 
 # --- SETUP THE LOCAL LLM ---
 # Initialize the Ollama model for all agents
-os.environ["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"] = "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"
+os.environ["HUGGINGFACE_API_KEY"] = "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"
 
 # Use a free model from Hugging Face
 llm = HuggingFaceEndpoint(
@@ -118,6 +118,7 @@ if st.button("🕵️‍♂️ Start Analysis", type="primary"):
     else:
 
         st.error("Please enter a target to investigate.")
+
 
 
 
