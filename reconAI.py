@@ -2,7 +2,7 @@ import os
 import streamlit as st
 from crewai import Agent, Task, Crew, Process
 from langchain_huggingface import HuggingFaceEndpoint
-from crewai_tools import BaseTool
+from langchain_core.tools import BaseTool # Corrected import from langchain_core
 from duckduckgo_search import DDGS
 
 # --- ENVIRONMENT AND API SETUP ---
@@ -24,7 +24,7 @@ except Exception as e:
     st.stop() # Stop the app if the LLM can't be loaded.
 
 # --- TOOL DEFINITION ---
-# Define a custom search tool using crewai_tools.BaseTool for better integration.
+# Define a custom search tool using BaseTool for better integration.
 class DuckDuckGoSearchTool(BaseTool):
     name: str = "DuckDuckGo Search"
     description: str = "A reliable tool to search the public internet for information, news, and articles."
@@ -165,3 +165,4 @@ if st.button("🕵️‍♂️ Start Analysis", type="primary"):
                 st.error(f"An error occurred during the analysis: {e}")
     else:
         st.warning("Please enter a target to investigate.")
+
