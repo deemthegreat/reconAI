@@ -101,7 +101,8 @@ digital_footprint_crew = Crew(
     agents=[recon_agent, analyst_agent, security_agent],
     tasks=[recon_task, analysis_task, security_task],
     process=Process.sequential,
-    verbose=2
+    verbose=2,
+    manager_llm=llm # Added manager_llm to resolve validation error
 )
 
 # --- STREAMLIT USER INTERFACE ---
