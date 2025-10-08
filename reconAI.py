@@ -1,84 +1,121 @@
 import os
 import streamlit as st
-from pydantic import BaseModel
 from crewai import Agent, Task, Crew, Process
 from langchain_huggingface import HuggingFaceEndpoint
+from crewai_tools import BaseTool
+from duckduckgo_search import DDGS
 
-# --- SETUP THE LOCAL LLM ---
+# --- ENVIRONMENT AND API SETUP ---
+# It's recommended to use Streamlit secrets for API keys.
+# For local testing, you can set it directly.
+# Example: os.environ["HUGGINGFACE_API_KEY"] = st.secrets["HUGGINGFACE_API_KEY"]
 os.environ["HUGGINGFACE_API_KEY"] = "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"
 
-llm = HuggingFaceEndpoint(
-    repo_id="mistralai/Mistral-7B-Instruct-v0.2",
-    task="text-generation",
-    max_new_tokens=512
-)
+# --- LLM CONFIGURATION ---
+# Initialize the HuggingFaceEndpoint for the Mistral model.
+try:
+    llm = HuggingFaceEndpoint(
+        repo_id="mistralai/Mistral-7B-Instruct-v0.2",
+        task="text-generation",
+        max_new_tokens=512
+    )
+except Exception as e:
+    st.error(f"Failed to initialize the language model: {e}")
+    st.stop() # Stop the app if the LLM can't be loaded.
 
-# --- DEFINE A DUCKDUCKGO SEARCH TOOL ---
-class DuckDuckGoSearchTool(BaseModel):
-    name: str = "DuckDuckGoSearch"
+# --- TOOL DEFINITION ---
+# Define a custom search tool using crewai_tools.BaseTool for better integration.
+class DuckDuckGoSearchTool(BaseTool):
+    name: str = "DuckDuckGo Search"
+    description: str = "A reliable tool to search the public internet for information, news, and articles."
 
-    def run(self, query: str) -> str:
-        from duckduckgo_search import DDGS
-        results = []
+    def _run(self, query: str) -> str:
+        """
+        Performs a search using DuckDuckGo and returns the top results.
+        """
+        results_list = []
         try:
             with DDGS() as ddgs:
+                # Fetch 5 results for the given query.
                 for r in ddgs.text(query, region='wt-wt', safesearch='Off', timelimit='y', max_results=5):
-                    results.append(r['body'])
-        except Exception as e:
-            results.append(f"Error during search: {e}")
-        return "\n".join(results)
+                    results_list.append(r['body'])
+            
+            if not results_list:
+                return "No results found for the query."
+            
+            return "\n".join(results_list)
 
+        except Exception as e:
+            return f"Error during search: {e}"
+
+# Instantiate the search tool for the agents.
 search_tool = DuckDuckGoSearchTool()
 
 # --- AGENT DEFINITIONS ---
+# Agent 1: The Reconnaissance Specialist
 recon_agent = Agent(
     role='Digital Reconnaissance Specialist',
-    goal='Search the public internet for mentions, social media, and online activities of {topic}.',
-    backstory="You are an OSINT expert tasked with gathering public information about a person.",
+    goal='Search the public internet for all mentions, social media profiles, and online activities related to {topic}.',
+    backstory=(
+        "You are an OSINT (Open Source Intelligence) expert. Your mission is to gather all publicly available "
+        "information about a subject, leaving no stone unturned on the public web."
+    ),
     verbose=True,
     allow_delegation=False,
     tools=[search_tool],
     llm=llm
 )
 
+# Agent 2: The Data Analyst
 analyst_agent = Agent(
     role='Data Clustering and Profiling Analyst',
-    goal='Analyze raw data and group into clusters like "Professional," "Personal," "Hobbies."',
-    backstory="You are a skilled data analyst. Organize messy data into a clean structured profile.",
+    goal='Analyze the raw data gathered and organize it into a structured profile. Group related information into logical clusters like "Professional Life," "Personal Details," and "Online Hobbies."',
+    backstory=(
+        "You are a skilled data analyst with a talent for finding patterns in messy data. Your job is to take the raw "
+        "intel and transform it into a clean, structured, and easy-to-read profile."
+    ),
     verbose=True,
     allow_delegation=False,
     llm=llm
 )
 
+# Agent 3: The Security Assessor
 security_agent = Agent(
     role='Digital Security Risk Assessor',
-    goal='Assess digital footprint and assign a security risk score from 1 (safe) to 10 (high risk). Provide actionable advice.',
-    backstory="You are a cybersecurity expert. Provide risk score and actionable recommendations.",
+    goal='Assess the subject\'s digital footprint to identify potential security risks. Assign a risk score from 1 (very safe) to 10 (high risk) and provide clear, actionable advice for improving their digital security.',
+    backstory=(
+        "You are a cybersecurity expert specializing in digital footprint analysis. You provide a clear risk score "
+        "and actionable recommendations to help people protect their online presence."
+    ),
     verbose=True,
     allow_delegation=False,
     llm=llm
 )
 
 # --- TASK DEFINITIONS ---
+# Task 1: Conduct Reconnaissance
 recon_task = Task(
-    description='Conduct thorough digital reconnaissance on the provided {topic}. Gather public info, links, social profiles, etc.',
-    expected_output='Raw unorganized list of all data points, links, and snippets.',
+    description='Conduct a thorough digital reconnaissance on the provided {topic}. Gather all public information, including links, social media profiles, and text snippets.',
+    expected_output='A raw, unorganized list containing all the data points, links, and text snippets found during the investigation.',
     agent=recon_agent
 )
 
+# Task 2: Analyze and Cluster Data
 analysis_task = Task(
-    description='Analyze raw data and cluster into logical groups with a structured markdown report.',
-    expected_output='Structured markdown report with clear headings and listed data points.',
+    description='Analyze the raw data from the reconnaissance phase. Cluster the information into logical groups to create a structured markdown report.',
+    expected_output='A well-structured markdown report with clear headings (e.g., ## Professional Information) and bullet points listing the relevant data.',
     agent=analyst_agent
 )
 
+# Task 3: Assess Security Risks
 security_task = Task(
-    description='Conduct security risk assessment based on clustered report. Assign score and recommendations.',
-    expected_output='Final report with risk score, justification paragraph, and 3 actionable steps.',
+    description='Conduct a final security risk assessment based on the structured report. Assign a risk score, provide a justification for the score, and list actionable recommendations.',
+    expected_output='A final report containing a numerical risk score (1-10), a paragraph explaining the reasoning behind the score, and a bulleted list of 3-5 actionable steps the subject can take to improve their digital security.',
     agent=security_agent
 )
 
 # --- CREW DEFINITION ---
+# Create the crew with the defined agents and tasks.
 digital_footprint_crew = Crew(
     agents=[recon_agent, analyst_agent, security_agent],
     tasks=[recon_task, analysis_task, security_task],
@@ -87,27 +124,44 @@ digital_footprint_crew = Crew(
 )
 
 # --- STREAMLIT USER INTERFACE ---
-st.set_page_config(page_title="AI Digital Footprint Agent", layout="wide")
-st.title("🤖 AI Digital Footprint & Risk Score Agent")
-st.markdown("This tool uses a team of AI agents to analyze your public digital footprint, running locally.")
+st.set_page_config(page_title="AI Digital Footprint Analyzer", layout="wide")
 
-st.sidebar.header("About")
-st.sidebar.info("Uses CrewAI + HuggingFace local model (Mistral 7B) to perform tasks while keeping your data private.")
+st.title("🤖 AI Digital Footprint & Risk Score Analyzer")
+st.markdown("This tool uses a team of AI agents to analyze a public digital footprint. Enter a target below to begin.")
+
+st.sidebar.header("About This Tool")
+st.sidebar.info(
+    "This application leverages the CrewAI framework and a HuggingFace language model (Mistral-7B) "
+    "to perform a multi-step analysis of a subject's publicly available digital footprint. The process is broken down into three phases: reconnaissance, analysis, and security assessment."
+)
 
 st.header("Enter a Target for Reconnaissance")
-topic_input = st.text_input("Enter a name, username, or email address to investigate:", placeholder="e.g., 'John Doe', 'johndoe123', or 'john.doe@email.com'")
+topic_input = st.text_input(
+    "Enter a name, username, or email address to investigate:",
+    placeholder="e.g., 'John Doe', 'johndoe123', or 'john.doe@email.com'"
+)
 
 if st.button("🕵️‍♂️ Start Analysis", type="primary"):
     if topic_input:
-        with st.spinner("AI crew is starting the investigation... This may take a few minutes."):
-            st.info("**Phase 1: Reconnaissance** - The first agent is searching the web...")
+        with st.spinner("The AI crew is starting the investigation... This may take a few minutes depending on the complexity."):
+            st.info("🔄 **Crew Kickoff:** The investigation has started.")
+            
+            # Add placeholders for agent updates
+            recon_status = st.empty()
+            analysis_status = st.empty()
+            security_status = st.empty()
+            
             try:
+                # The kickoff method starts the crew's process.
+                # The inputs dictionary passes the user's topic to the tasks.
                 result = digital_footprint_crew.kickoff(inputs={'topic': topic_input})
+                
                 st.success("Analysis Complete!")
                 st.markdown("---")
                 st.header("Final Digital Footprint Report")
                 st.markdown(result)
+                
             except Exception as e:
-                st.error(f"Error during analysis: {e}")
+                st.error(f"An error occurred during the analysis: {e}")
     else:
-        st.error("Please enter a target to investigate.")
+        st.warning("Please enter a target to investigate.")
