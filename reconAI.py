@@ -2,8 +2,7 @@ import os
 import streamlit as st
 from crewai import Agent, Task, Crew, Process
 from langchain_huggingface import HuggingFaceEndpoint
-from langchain_core.tools import BaseTool # Corrected import from langchain_core
-from duckduckgo_search import DDGS
+from crewai_tools import DuckDuckGoSearchTool # Use the pre-built tool
 
 # --- ENVIRONMENT AND API SETUP ---
 # It's recommended to use Streamlit secrets for API keys.
@@ -24,32 +23,10 @@ except Exception as e:
     st.stop() # Stop the app if the LLM can't be loaded.
 
 # --- TOOL DEFINITION ---
-# Define a custom search tool using BaseTool for better integration.
-class DuckDuckGoSearchTool(BaseTool):
-    name: str = "DuckDuckGo Search"
-    description: str = "A reliable tool to search the public internet for information, news, and articles."
-
-    def _run(self, query: str) -> str:
-        """
-        Performs a search using DuckDuckGo and returns the top results.
-        """
-        results_list = []
-        try:
-            with DDGS() as ddgs:
-                # Fetch 5 results for the given query.
-                for r in ddgs.text(query, region='wt-wt', safesearch='Off', timelimit='y', max_results=5):
-                    results_list.append(r['body'])
-            
-            if not results_list:
-                return "No results found for the query."
-            
-            return "\n".join(results_list)
-
-        except Exception as e:
-            return f"Error during search: {e}"
-
-# Instantiate the search tool for the agents.
+# Instantiate the pre-built DuckDuckGo search tool from crewai_tools.
+# This is more stable and avoids potential Pydantic validation issues.
 search_tool = DuckDuckGoSearchTool()
+
 
 # --- AGENT DEFINITIONS ---
 # Agent 1: The Reconnaissance Specialist
