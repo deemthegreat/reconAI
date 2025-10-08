@@ -2,13 +2,18 @@ import os
 import streamlit as st
 from crewai import Agent, Task, Crew, Process
 from langchain_huggingface import HuggingFaceEndpoint
-from langchain_community.tools import DuckDuckGoSearchRun # Use the stable LangChain community tool
+from crewai_tools import SerperDevTool # Use the stable and fast SerperDevTool
 
 # --- ENVIRONMENT AND API SETUP ---
+# You need to get a free API key from https://serper.dev
 # It's recommended to use Streamlit secrets for API keys.
-# For local testing, you can set it directly.
-# Example: os.environ["HUGGINGFACE_API_KEY"] = st.secrets["HUGGINGFACE_API_KEY"]
+# os.environ["SERPER_API_KEY"] = st.secrets["SERPER_API_KEY"]
+# os.environ["HUGGINGFACE_API_KEY"] = st.secrets["HUGGINGFACE_API_KEY"]
+
+# For local testing, you can set them directly, but be careful sharing your code.
+os.environ["SERPER_API_KEY"] = "YOUR_SERPER_API_KEY" # IMPORTANT: Replace with your actual key
 os.environ["HUGGINGFACE_API_KEY"] = "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"
+
 
 # --- LLM CONFIGURATION ---
 # Initialize the HuggingFaceEndpoint for the Mistral model.
@@ -23,9 +28,8 @@ except Exception as e:
     st.stop() # Stop the app if the LLM can't be loaded.
 
 # --- TOOL DEFINITION ---
-# Instantiate the DuckDuckGo search tool from langchain_community.
-# This provides a stable and reliable search integration for the agent.
-search_tool = DuckDuckGoSearchRun()
+# Instantiate the SerperDevTool for efficient web searches.
+search_tool = SerperDevTool()
 
 
 # --- AGENT DEFINITIONS ---
@@ -111,6 +115,8 @@ st.sidebar.info(
     "This application leverages the CrewAI framework and a HuggingFace language model (Mistral-7B) "
     "to perform a multi-step analysis of a subject's publicly available digital footprint. The process is broken down into three phases: reconnaissance, analysis, and security assessment."
 )
+st.sidebar.warning("You will need a free API key from Serper.dev for the search agent to work. Please add it to the code or your Streamlit secrets.")
+
 
 st.header("Enter a Target for Reconnaissance")
 topic_input = st.text_input(
@@ -119,18 +125,15 @@ topic_input = st.text_input(
 )
 
 if st.button("🕵️‍♂️ Start Analysis", type="primary"):
-    if topic_input:
+    # Check for API key before running
+    if not os.environ.get("SERPER_API_KEY") or os.environ.get("SERPER_API_KEY") == "YOUR_SERPER_API_KEY":
+        st.error("Serper API key is missing! Please add your key to the code or Streamlit secrets to run the analysis.")
+    elif topic_input:
         with st.spinner("The AI crew is starting the investigation... This may take a few minutes depending on the complexity."):
             st.info("🔄 **Crew Kickoff:** The investigation has started.")
             
-            # Add placeholders for agent updates
-            recon_status = st.empty()
-            analysis_status = st.empty()
-            security_status = st.empty()
-            
             try:
                 # The kickoff method starts the crew's process.
-                # The inputs dictionary passes the user's topic to the tasks.
                 result = digital_footprint_crew.kickoff(inputs={'topic': topic_input})
                 
                 st.success("Analysis Complete!")
