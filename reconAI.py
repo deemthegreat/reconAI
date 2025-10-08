@@ -2,13 +2,13 @@ import os
 import streamlit as st
 from crewai import Agent, Task, Crew, Process
 from langchain_huggingface import HuggingFaceEndpoint
-from crewai_tools import DuckDuckGoSearchTool # Use the pre-built tool
+from langchain_community.tools import DuckDuckGoSearchRun # Use the stable LangChain community tool
 
 # --- ENVIRONMENT AND API SETUP ---
 # It's recommended to use Streamlit secrets for API keys.
 # For local testing, you can set it directly.
 # Example: os.environ["HUGGINGFACE_API_KEY"] = st.secrets["HUGGINGFACE_API_KEY"]
-os.environ["HUGGINGFACE_API_KEY"] = "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"
+os.environ["HUGGINGFACE_API_KEY"] = "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"
 
 # --- LLM CONFIGURATION ---
 # Initialize the HuggingFaceEndpoint for the Mistral model.
@@ -23,9 +23,9 @@ except Exception as e:
     st.stop() # Stop the app if the LLM can't be loaded.
 
 # --- TOOL DEFINITION ---
-# Instantiate the pre-built DuckDuckGo search tool from crewai_tools.
-# This is more stable and avoids potential Pydantic validation issues.
-search_tool = DuckDuckGoSearchTool()
+# Instantiate the DuckDuckGo search tool from langchain_community.
+# This provides a stable and reliable search integration for the agent.
+search_tool = DuckDuckGoSearchRun()
 
 
 # --- AGENT DEFINITIONS ---
