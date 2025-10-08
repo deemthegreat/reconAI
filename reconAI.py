@@ -1,25 +1,26 @@
 import os
 import streamlit as st
 from crewai import Agent, Task, Crew, Process
-from langchain_huggingface import HuggingFaceEndpoint
+from langchain_groq import ChatGroq
 from crewai_tools import SerperDevTool
 
 # --- ENVIRONMENT AND API SETUP ---
 # It's recommended to use Streamlit secrets for API keys.
+# You will need a free API key from https://console.groq.com/keys
+# os.environ["GROQ_API_KEY"] = st.secrets["GROQ_API_KEY"]
 # os.environ["SERPER_API_KEY"] = st.secrets["SERPER_API_KEY"]
-# os.environ["HUGGINGFACE_API_KEY"] = st.secrets["HUGGINGFACE_API_KEY"]
 
 # For local testing, you can set them directly.
+os.environ["GROQ_API_KEY"] = "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" # IMPORTANT: Replace with your actual key
 os.environ["SERPER_API_KEY"] = "b4fadaeeda46b090334c4e1b9b313d8fcdff85987cb2029fb76e49fad58453b7" # IMPORTANT: Replace with your actual key
-os.environ["HUGGINGFACE_API_KEY"] = "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"
 
 
 # --- LLM CONFIGURATION ---
+# Initialize the Groq LLM
 try:
-    llm = HuggingFaceEndpoint(
-        repo_id="mistralai/Mistral-7B-Instruct-v0.2",
-        task="text-generation",
-        max_new_tokens=512
+    llm = ChatGroq(
+        api_key=os.environ.get("GROQ_API_KEY"),
+        model="llama3-8b-8192"
     )
 except Exception as e:
     st.error(f"Failed to initialize the language model: {e}")
@@ -87,7 +88,6 @@ security_task = Task(
 )
 
 # --- CREW DEFINITION ---
-# The `manager_llm` is not needed for a sequential process in these library versions.
 digital_footprint_crew = Crew(
     agents=[recon_agent, analyst_agent, security_agent],
     tasks=[recon_task, analysis_task, security_task],
@@ -103,10 +103,10 @@ st.markdown("This tool uses a team of AI agents to analyze a public digital foot
 
 st.sidebar.header("About This Tool")
 st.sidebar.info(
-    "This application leverages the CrewAI framework and a HuggingFace language model (Mistral-7B) "
+    "This application leverages the CrewAI framework and the Llama3 model (via Groq) "
     "to perform a multi-step analysis of a subject's publicly available digital footprint."
 )
-st.sidebar.warning("You will need a free API key from Serper.dev for the search agent to work. Please add it to the code or your Streamlit secrets.")
+st.sidebar.warning("You will need free API keys from Serper.dev and Groq for the agents to work. Please add them to the code or your Streamlit secrets.")
 
 
 st.header("Enter a Target for Reconnaissance")
@@ -116,8 +116,8 @@ topic_input = st.text_input(
 )
 
 if st.button("🕵️‍♂️ Start Analysis", type="primary"):
-    if not os.environ.get("SERPER_API_KEY") or os.environ.get("SERPER_API_KEY") == "YOUR_SERPER_API_KEY":
-        st.error("Serper API key is missing! Please add your key to the code or Streamlit secrets to run the analysis.")
+    if not os.environ.get("SERPER_API_KEY") or os.environ.get("SERPER_API_KEY") == "YOUR_SERPER_API_KEY" or not os.environ.get("GROQ_API_KEY") or os.environ.get("GROQ_API_KEY") == "YOUR_GROQ_API_KEY":
+        st.error("API key(s) are missing! Please add your Serper and Groq keys to the code or Streamlit secrets to run the analysis.")
     elif topic_input:
         with st.spinner("The AI crew is starting the investigation... This may take a few minutes."):
             st.info("🔄 **Crew Kickoff:** The investigation has started.")
